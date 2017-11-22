@@ -6,34 +6,58 @@
 #
 
 library(shiny)
-library(ggmap)
-library(ggplot2)
 library(leaflet)
 
 shinyUI(fluidPage(
   
   # Application title
-  headerPanel("Boston Air BnB Listing Visualizations"),
-  
-  sidebarPanel
-  (
-    selectInput("Attributes", "Select Attribute to Visualize", 
-                choices = c("Property Type","Location", "Room Type","Rate")),
-    uiOutput("selectionOnFly"),
-    conditionalPanel(condition = "input.Attributes == 'Rate'",
-                     sliderInput("InputRate", "Select range for Rates (USD)", 
-                                 min = 0, max = 500, value = 10, step = 1))
+  navbarPage("Boston Air BnB Listing Visualizations",
+             
+    tabPanel("Visualization",
+      sidebarLayout(
+        sidebarPanel
+        (
+          selectInput("Attributes", "Select Attribute to Visualize", 
+                      choices = c("Property Type","Location","Rate")),
+          uiOutput("selectionOnFly"),
+          conditionalPanel(condition = "input.Attributes == 'Rate'",
+                           sliderInput("InputRate", "Select range for Rates (USD)", 
+                                       min = 11, max = 500, value = 20, step = 1))
+          
+        ),
+        mainPanel(
+          
+          tabsetPanel(type = "tabs", id="tabSetPanel", 
+                      
+                      tabPanel("Map", leafletOutput("leafletMap", height = 700)),
+                      
+                      tabPanel("Summary",
+                               fluidRow(column(6, plotOutput("plot1",hover = 'Price')),
+                                        column(6, plotOutput("plot2",hover = 'Number of Bedrooms')),
+                                        column(6, plotOutput("plot3",hover = 'Number of Bathrooms')),
+                                        column(6, plotOutput("plot4",hover = 'Number of Reviews'))),
+                               fluidRow(column(12, verbatimTextOutput("summarytable")))
+                      ),
+                      
+                      tabPanel("Review",plotOutput("ReviewOut", height = 700)),
+                      tabPanel("Sentiments",
+                               plotOutput("dynamicSentimentPlot", width = "100%", height = 700)
+                      )
+                      
+          )
+        )
+      )
+    ),
     
-  ),
-  mainPanel(
+    tabPanel("Top Neighbourhoods",
+             plotOutput("sentimentPlot", width = "70%", height = 800)
+    ),
     
-    tabsetPanel(type = "tabs", id="tabSetPanel", 
-                tabPanel("Leaflet", leafletOutput("leafletMap", height = 700)),
-                tabPanel("Plot", plotOutput("listingplot")),
-                tabPanel("Summary",verbatimTextOutput("summarytable")),
-                tabPanel("Review",plotOutput("ReviewOut")),
-                tabPanel("Sentiments",plotOutput("sentimentPlot"))
-                
+    tabPanel("Influential Predictors",
+             fluidRow(column(12, verbatimTextOutput("Regression")),
+                      column(12, plotOutput("lmPlot"))
+             )
+        )
     )
   )
-))
+)

@@ -6,7 +6,6 @@
 #
 
 library(shiny)
-library(ggmap)
 library(ggplot2)
 library(rlist)
 library(leaflet)
@@ -17,67 +16,25 @@ library(wordcloud)
 library(tm)
 library(dplyr)
 library(data.table)
+library(janeaustenr)
+library(tidytext)
+library(stringr)
+library(treemap)
 
-# Get current working directory
-workingDir <- paste(getwd(),"Data", sep="/")
 
-# Names of datasets
-listingsDSName = "listings"
-calendarDSName = "calendar"
-reviewsDSName = "reviews"
+## ------------------------------------------------------------------------------------------------------
+## shinyServer function begins here ->
+## ------------------------------------------------------------------------------------------------------
 
-colNamesListings = c("id", "name", "description", "summary", "neighbourhood_cleansed", 
-                     "latitude", "longitude", "property_type", "room_type", "accommodates", 
-                     "bathrooms", "bedrooms", "beds", "amenities", "price", 
-                     "number_of_reviews", "review_scores_rating", 
-                     "review_scores_location", "instant_bookable")
+shinyServer(function(input, output) {
 
-# Read datasets in R environment - Region Start
-
-#listings <- read.csv(file=paste(paste(workingDir, listingsDSName, sep = "/"),'.csv',sep=''), header=TRUE, sep = ",", stringsAsFactors = FALSE)
-#reviews <- read.csv(file=paste(paste(workingDir, reviewsDSName, sep = "/"),'.csv',sep=''), header = TRUE, sep = ",")
-
-listings <- fread(input=paste(paste(workingDir, listingsDSName, sep = "/"),'.csv',sep=''), sep = ",", 
-                  header = "auto", select = colNamesListings)
-
-# Read datasets in R environment - Region End
-
-shinyServer(function(input, output, session) {
-  
-  # Declaring & Initializing global variables - Region Start
-  
-  outputType <- list(o1 = list(type='Plot',variablesOfInterest=c("latitude","longitude","property_type","neighbourhood_cleansed","price")),
-                     o2 = list(type='Summary',variablesOfInterest=c("bedrooms","bathrooms","number_of_reviews","price")),
-                     o3 = list(type='Leaflet',variablesOfInterest=c("latitude","longitude","property_type","neighbourhood_cleansed","price")),
-                     o4 = list(type='Review',variablesOfInterest=c("summary"))
-                     )
-  
-  inputAttr <- list(a1 = list(type='Property Type',varName="property_type", inputControlName="InputPropertyType", plotColor="red"),
-                    a2 = list(type='Location',varName="neighbourhood_cleansed", inputControlName="InputLocation", plotColor="blue"),
-                    a3 = list(type='Room Type',varName="room_type", inputControlName="InputRoomType", plotColor="cyan"),
-                    a4 = list(type='Rate',varName="transformed_price", inputControlName="InputRate", plotColor="green")
-                    )
-  
-  varsOfInterest=c("")
-  varNameToFilter = c("")
-  ipControlName = c("")
-  varColor = c("")
-  
-  # Declaring & Initializing global variables - Region End
-  
-  
-  
-  # Read datasets in R environment - Region Start
-  
-  listingLocations <- sort(as.vector(unique(listings$neighbourhood_cleansed)), decreasing = FALSE)
-  listingPropertyTypes <- sort(as.vector(unique(na.omit(listings$property_type[listings$property_type != ""]))), decreasing = FALSE)
-  listingRoomTypes <- sort(as.vector(unique(na.omit(listings$room_type[listings$room_type != ""]))), decreasing = FALSE)
-  
-  # Read datasets in R environment - Region End
-  
-  
+## ------------------------------------------------------------------------------------------------------
+## 
+## Code for Visualizations Navigation Bar below ->
+##
+## ------------------------------------------------------------------------------------------------------
+ 
   # Generating HTML controls on fly in ui.R - Region Start
-  
   output$selectionOnFly <- renderUI({
     if(!is.null(input$Attributes)) {
       
@@ -89,121 +46,159 @@ shinyServer(function(input, output, session) {
       {
         selectInput("InputLocation", "Select Location", choices = listingLocations)
       }
-      else if(input$Attributes == "Room Type")
-      {
-        selectInput("InputRoomType", "Select Room Type", choices = listingRoomTypes)
-      }
     }
   })
-  
   # Generating HTML controls on fly in ui.R - Region End
   
   
-  # Leaflet Map Generation - Start Region
-  
-  output$leafletMap <- renderLeaflet({
-    
-    varsOfInterest <- subset(outputType, type==input$tabSetPanel, variablesOfInterest)
-    varNameToFilter <- subset(inputAttr, type==input$Attributes, varName)
-    ipControlName <- subset(inputAttr, type==input$Attributes, inputControlName)
-    varColor <- subset(inputAttr, type==input$Attributes, plotColor)
-
-    leafletData <- listings %>% filter(eval(parse(text=paste(listingsDSName,varNameToFilter[[names(varNameToFilter)[1]]],sep="$"))) == eval(parse(text=paste("input",ipControlName[[names(ipControlName)[1]]],sep="$")))) %>%
-                select(varsOfInterest[[names(varsOfInterest)[1]]])
-    
-    leaflet(data = leafletData) %>%
-      addProviderTiles(providers$Stamen.TonerLite,
-                       options = providerTileOptions(noWrap = TRUE)
-      ) %>%
-      addMarkers(data = leafletData)
-  })
-  
-  # Leaflet Map Generation - End Region
-  
-  
-  
-  output$listingplot <- renderPlot(
-    {
-      if(!is.null(input$Attributes) && input$Attributes != "") {
-        varsOfInterest <- subset(outputType, type==input$tabSetPanel, variablesOfInterest)
-        varNameToFilter <- subset(inputAttr, type==input$Attributes, varName)
-        ipControlName <- subset(inputAttr, type==input$Attributes, inputControlName)
-        varColor <- subset(inputAttr, type==input$Attributes, plotColor)
-       
-        newlistings <- subset(listings,
-                              eval(parse(text=paste(listingsDSName,varNameToFilter[[names(varNameToFilter)[1]]],sep="$"))) == eval(parse(text=paste("input",ipControlName[[names(ipControlName)[1]]],sep="$"))),
-                              select = varsOfInterest[[names(varsOfInterest)[1]]])
-       
-        NLdataframe <- data.frame(newlistings)
-        bostonmap <- get_map(location = c(lon = -71.0589,
-                                          lat = 42.3601),
-                             zoom = 15,
-                             maptype = "roadmap",
-                             source = "google")
-        displaymap <- ggmap(bostonmap,extent = "normal", maprange = TRUE) + geom_point(data= NLdataframe,
-                                                                                       aes(x=longitude,
-                                                                                           y=latitude),
-                                                                                       colour = varColor[[names(varColor)[1]]])
-        
-      }
-      
-      if(input$Attributes == "Location")
-      {
-        displaymap
-      }
-      else if(input$Attributes == "Property Type")
-      {
-        displaymap
-      }
-      else if(input$Attributes == "Room Type")
-      {
-        displaymap
-      }
-      else if(input$Attributes == "Rate")
-      {
-        displaymap
-      }
-    }
-  )
-  output$summarytable <- renderPrint(
-    {
+  # Filtering listings rown based on selection in the sidebar panel - Region Start
+  extractSelectionData <- reactive({
+    if(!is.null(input$Attributes)){
+      reqDataSetTableName <- subset(outputType, type==input$tabSetPanel, reqDSTable)
       varsOfInterest <- subset(outputType, type==input$tabSetPanel, variablesOfInterest)
       varNameToFilter <- subset(inputAttr, type==input$Attributes, varName)
       ipControlName <- subset(inputAttr, type==input$Attributes, inputControlName)
+      varColor <- subset(inputAttr, type==input$Attributes, plotColor)
       
-      print(listings$id[1])
-      
+      if(input$Attributes == "Rate")
+      {
+        subset(eval(parse(text=reqDataSetTableName[[names(reqDataSetTableName)]][1])),
+               eval(parse(text=paste(reqDataSetTableName[[names(reqDataSetTableName)]][1],varNameToFilter[[names(varNameToFilter)]][1],sep="$"))) 
+               <= eval(parse(text=paste("input",ipControlName[[names(ipControlName)]][1],sep="$"))),
+               select = varsOfInterest[[names(varsOfInterest)[1]]])
+      }
+      else
+      {
+        subset(eval(parse(text=reqDataSetTableName[[names(reqDataSetTableName)]][1])),
+               eval(parse(text=paste(reqDataSetTableName[[names(reqDataSetTableName)]][1],varNameToFilter[[names(varNameToFilter)]][1],sep="$"))) 
+               == eval(parse(text=paste("input",ipControlName[[names(ipControlName)]][1],sep="$"))),
+               select = varsOfInterest[[names(varsOfInterest)[1]]])
+      }
+    }
+  })
+  # Filtering listings rown based on selection in the sidebar panel - Region End
+  
+  
+  # Test Summary Table Function - Region Start
+  output$summarytable <- renderPrint(
+    {
       if(!is.null(input$Attributes)) {
-        newlistings <- subset(listings,
-                              eval(parse(text=paste(listingsDSName,varNameToFilter[[names(varNameToFilter)]][1],sep="$"))) == eval(parse(text=paste("input",ipControlName[[names(ipControlName)]][1],sep="$"))),
-                              select = varsOfInterest[[names(varsOfInterest)[1]]])
-
-
-        summary(newlistings)
+        if(!is.null(extractSelectionData()))
+          #print(extractSelectionData())
+        else
+          print("test data is null")
       }
     }
   )
+  # Test Summary Table Function - Region End
+  
+  
+  # Leaflet Map Generation - Region Start
+  output$leafletMap <- renderLeaflet({
+    
+    if(nrow(listings) > 0 && !is.null(input$Attributes)) {
+      
+      # Grab the filtered listings data based on current selection
+      leafletData <- extractSelectionData()
+      
+      if(nrow(leafletData) > 0) {
+        
+        # Create our colors with a categorical color function
+        color <- colorFactor(topo.colors(7), leafletData$neighbourhood_cleansed)
+        
+        leaflet(data = leafletData) %>%
+          #setView(lng = -73.98928, lat = 40.75042, zoom = 10) %>%
+          addProviderTiles(
+                           providers$CartoDB.Positron,
+                           options = providerTileOptions(noWrap = TRUE)
+                          ) %>%
+          addGraticule() %>%
+          addMarkers(lat = leafletData$latitude,
+                     lng = leafletData$longitude,
+                     clusterOptions = markerClusterOptions(),
+                     popup = paste(
+                       "<b>", as.character(leafletData$name), "<br/></b>",
+                       "Price: $", as.numeric(leafletData$transformed_price), "<br/>",
+                       "<i> Rating: ", as.numeric(leafletData$review_rating_transformed), "</i>"
+                      ),
+                     options = markerOptions(riseOnHover = TRUE)
+                     )
+      }
+    }
+  })
+  # Leaflet Map Generation - Region End
+  
+  
+  # Box plot to see price variation based on selection - Region Start
+  output$plot1 <- renderPlot(
+    {
+      if(!is.null(input$Attributes)) {
+        
+        # Grab the filtered listings data based on current selection
+        plot1Data <- extractSelectionData()
+        
+        if(nrow(plot1Data) > 0)
+          boxplot(plot1Data$transformed_price,xlab = "Daily Room Rate")
+      }
+    }
+  )
+  #  Box plot to see price variation based on selection - Region End
+  
+  
+  # Histogram plot to see variation in number of bedrooms based on selection - Region Start
+  output$plot2 <- renderPlot(
+    {
+      if(!is.null(input$Attributes)) {
+        
+        # Grab the filtered listings data based on current selection
+        plot2Data <- extractSelectionData()
+        
+        if(nrow(plot2Data) > 0)
+          plot(plot2Data$host_is_superhost,xlab = "Number of Super Hosts")
+      }
+    }
+  )
+  # Histogram plot to see variation in number of bedrooms based on selection - Region End
+  
+  
+  # Histogram plot to see variation in number of bathrooms based on selection - Region Start
+  output$plot3 <- renderPlot(
+    {
+      if(!is.null(input$Attributes)) {
+        
+        # Grab the filtered listings data based on current selection
+        plot3Data <- extractSelectionData()
+        
+        if(nrow(plot3Data) > 0)
+          plot(plot3Data$host_identity_verified, xlab = "Number of Identity Verified Hosts")
+        
+      }
+    }
+  )
+  # Histogram plot to see variation in number of bathrooms based on selection - Region End
+  
+  
+  # Histogram plot to see variation in number of reviews based on selection - Region Start
+  output$plot4 <- renderPlot(
+    {
+      if(!is.null(input$Attributes)) {
+        
+        # Grab the filtered listings data based on current selection
+        plot4Data <- extractSelectionData()
+        
+        if(nrow(plot4Data) > 0)
+          hist(plot4Data$number_of_reviews, xlab = "Number of Reviews")
+      }
+    }
+  )
+  # Histogram plot to see variation in number of reviews based on selection - Region End
+  
+  
+  # Word Cloud Generation - Region Start
   output$ReviewOut <- renderPlot(
     {
-      if(input$Attributes == "Location")
-      {
-
-        reviewdf <- subset(listings,
-                           listings$neighbourhood_cleansed == input$InputLocation,
-                           select = c("summary"))
-      }
-      else if(input$Attributes == "Property Type")
-      {
-        reviewdf <- subset(listings,
-                           listings$property_type == input$InputPropertyType,
-                           select = c("summary"))
-      }
-      else if(input$Attributes == "Rate")
-      {
-        reviewdf <- subset(listings,
-                           listings$transformed_price <= input$InputRate,
-                           select = c("summary"))
-      }
+      # Grab the filtered listings data based on current selection
+      reviewdf <- extractSelectionData()
       
       wordscleanvs <- VectorSource(reviewdf)
       wordsclean <- SimpleCorpus(wordscleanvs, control = list(language = "en"))
@@ -219,6 +214,79 @@ shinyServer(function(input, output, session) {
                 use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))
     }
   )
-
+  # Word Cloud Generation - Region End
+  
+  
+  # Sentiment Analysis to see vibes of a neighbourhood for entire dataset - Region Start
+  output$sentimentPlot <- renderPlot({
+    
+    treemap(by_hood_sentiment, index=c("neighbourhood_cleansed","sentiment"), vSize="prop", vColor="neighbourhood_cleansed", 
+            type="index", title="Sentiment Analysis in Neighbourhood", vertex.size = 12, palette=brewer.pal(n=8, "Set3"), 
+            fontsize.title = 20, fontsize.labels = 15, fontsize.legend = 16, fontcolor.labels = "Black", fontfamily.title = "sans", 
+            fontfamily.labels = "sans", fontfamily.legend = "sans")
+  })
+  # Sentiment Analysis to see vibes of a neighbourhood for entire dataset - Region End
+  
+  
+  # Dynamic Sentiment Analysis to see vibes of a neighbourhood based on selection - Region Start
+  output$dynamicSentimentPlot <- renderPlot({
+    
+    if(!is.null(input$Attributes)){
+    
+      sentimentData <- extractSelectionData()
+      by_nh_selection_sentiment <- calculateSentiments(mergedReviews, sentimentData)
+      
+      ggplot(data=by_nh_selection_sentiment, aes(x=neighbourhood_cleansed, y=prop, fill=neighbourhood_cleansed)) + geom_bar(stat="identity") + facet_wrap( ~ sentiment) +
+        labs(title="Variation In Vibes Of Neighbourhoods Based On Selection Variables:",
+             x="Sentiments", y="Proportion Index") +
+        theme_minimal() +
+        theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    }
+  })
+  # Dynamic Sentiment Analysis to see vibes of a neighbourhood based on selection - Region End
+  
+  
+## ---------------------------------------------------------------------------------------------------
+## 
+## Code for 'Influential Predictros' Navigation Bar below ->
+## This is the code for Regression explanatory model
+##
+## ---------------------------------------------------------------------------------------------------
+  
+  # ANOVA statistics based on Chi-Square test - Region End
+  output$Regression <- renderPrint({
+    
+    predictors <- listings %>% select(review_rating_transformed,listed_since_days,host_is_superhost,
+                                      transformed_price,host_identity_verified,host_has_profile_pic,
+                                      number_of_reviews,host_response_time,
+                                      host_response_rate,host_acceptance_rate,property_type,
+                                      room_type,neighbourhood_cleansed)
+    
+    model <- glm(review_rating_transformed ~.,data=predictors)
+    anova(model,test="Chisq")
+    
+  }
+  )
+  # ANOVA statistics based on Chi-Square test - Region End
+  
+  
+  # Regression plot - Region End
+  output$lmPlot <- renderPlot({
+    
+    predictors <- listings %>% select(review_rating_transformed,listed_since_days,host_is_superhost,
+                                      transformed_price,host_identity_verified,host_has_profile_pic,
+                                      number_of_reviews,host_response_time,
+                                      host_response_rate,host_acceptance_rate,property_type,
+                                      room_type,neighbourhood_cleansed)
+    
+    model <- glm(review_rating_transformed ~.,data=predictors)
+    plot(model)
+    
+  }
+  )
+  # Regression plot - Region End
+  
 }
 )
+
+shinyApp(shinyUI,shinyServer)
