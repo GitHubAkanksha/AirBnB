@@ -5,7 +5,21 @@
 ###############################################
 
 
+library(shiny)
+library(ggplot2)
+library(rlist)
+library(leaflet)
+library(RColorBrewer)
+library(readr)
+library(SnowballC)
+library(wordcloud)
+library(tm)
+library(dplyr)
 library(data.table)
+library(janeaustenr)
+library(tidytext)
+library(stringr)
+library(treemap)
 
 # Function to fread the files
 extractData <- function(dsName, dsColumns) {
@@ -45,8 +59,8 @@ mergedReviews <- merge(reviews, listings, by = "listing_id") #taking inner join
 
 # Declaring & Initializing global variables - Region Start
 outputType <- list(o1 = list(type='Map',reqDSTable=listingsDSName,variablesOfInterest=c("name","latitude","longitude","number_of_reviews","review_scores_rating","property_type","neighbourhood_cleansed","transformed_price","review_rating_transformed")),
-                   o2 = list(type='Summary',reqDSTable=listingsDSName,variablesOfInterest=c("bedrooms","bathrooms","number_of_reviews","transformed_price","host_is_superhost","host_identity_verified","host_response_time","host_response_rate")),
-                   o3 = list(type='Review',reqDSTable=listingsDSName,variablesOfInterest=c("summary")),
+                   o2 = list(type='Summary Statistics',reqDSTable=listingsDSName,variablesOfInterest=c("bedrooms","bathrooms","number_of_reviews","transformed_price","host_is_superhost","host_identity_verified","host_response_time","host_response_rate")),
+                   o3 = list(type='Description',reqDSTable=listingsDSName,variablesOfInterest=c("description")),
                    o4 = list(type='Sentiments',reqDSTable=mergedReviewsDSName,variablesOfInterest=c("listing_id","name","property_type","neighbourhood_cleansed","comments"))
 )
 
@@ -132,7 +146,7 @@ calculateSentiments <- function(dataTable, filteredDT){
 }
 
 # Generate Sentiments for the entire dataset - Region Start
-#by_nh_sentiment <- calculateSentiments(mergedReviews, top_neighbourhoods)
+by_nh_sentiment <- calculateSentiments(mergedReviews, top_neighbourhoods)
 # Generate Sentiments for the entire dataset - Region End
 
 

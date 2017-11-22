@@ -20,6 +20,10 @@ library(janeaustenr)
 library(tidytext)
 library(stringr)
 library(treemap)
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+
 
 
 ## ------------------------------------------------------------------------------------------------------
@@ -79,20 +83,6 @@ shinyServer(function(input, output) {
   # Filtering listings rown based on selection in the sidebar panel - Region End
   
   
-  # Test Summary Table Function - Region Start
-  output$summarytable <- renderPrint(
-    {
-      if(!is.null(input$Attributes)) {
-        if(!is.null(extractSelectionData()))
-          #print(extractSelectionData())
-        else
-          print("test data is null")
-      }
-    }
-  )
-  # Test Summary Table Function - Region End
-  
-  
   # Leaflet Map Generation - Region Start
   output$leafletMap <- renderLeaflet({
     
@@ -138,7 +128,7 @@ shinyServer(function(input, output) {
         plot1Data <- extractSelectionData()
         
         if(nrow(plot1Data) > 0)
-          boxplot(plot1Data$transformed_price,xlab = "Daily Room Rate")
+          boxplot(plot1Data$transformed_price, main = "Variation In Price", xlab = "Daily Room Rate", ylab = "Price Range")
       }
     }
   )
@@ -152,9 +142,10 @@ shinyServer(function(input, output) {
         
         # Grab the filtered listings data based on current selection
         plot2Data <- extractSelectionData()
+        counts <- table(plot2Data$host_is_superhost)
         
         if(nrow(plot2Data) > 0)
-          plot(plot2Data$host_is_superhost,xlab = "Number of Super Hosts")
+          barplot(counts, main = "Proportion Of Super Hosts", xlab = "Number of Super Hosts", ylab = "Count")
       }
     }
   )
@@ -168,9 +159,10 @@ shinyServer(function(input, output) {
         
         # Grab the filtered listings data based on current selection
         plot3Data <- extractSelectionData()
+        counts <- table(plot3Data$host_identity_verified)
         
         if(nrow(plot3Data) > 0)
-          plot(plot3Data$host_identity_verified, xlab = "Number of Identity Verified Hosts")
+          barplot(counts, main="Proportion Of Verified Hosts", xlab = "Number of Identity Verified Hosts", ylab="Count")
         
       }
     }
@@ -187,7 +179,7 @@ shinyServer(function(input, output) {
         plot4Data <- extractSelectionData()
         
         if(nrow(plot4Data) > 0)
-          hist(plot4Data$number_of_reviews, xlab = "Number of Reviews")
+          hist(plot4Data$number_of_reviews, main="Variation In Number Of Reviews", xlab = "Number of Reviews", ylab="Count")
       }
     }
   )
@@ -220,7 +212,7 @@ shinyServer(function(input, output) {
   # Sentiment Analysis to see vibes of a neighbourhood for entire dataset - Region Start
   output$sentimentPlot <- renderPlot({
     
-    treemap(by_hood_sentiment, index=c("neighbourhood_cleansed","sentiment"), vSize="prop", vColor="neighbourhood_cleansed", 
+    treemap(by_nh_sentiment, index=c("neighbourhood_cleansed","sentiment"), vSize="prop", vColor="neighbourhood_cleansed", 
             type="index", title="Sentiment Analysis in Neighbourhood", vertex.size = 12, palette=brewer.pal(n=8, "Set3"), 
             fontsize.title = 20, fontsize.labels = 15, fontsize.legend = 16, fontcolor.labels = "Black", fontfamily.title = "sans", 
             fontfamily.labels = "sans", fontfamily.legend = "sans")
@@ -280,6 +272,7 @@ shinyServer(function(input, output) {
                                       room_type,neighbourhood_cleansed)
     
     model <- glm(review_rating_transformed ~.,data=predictors)
+    #plot_model(model, type = "pred", terms = c("listed_since_days","host_is_superhost","transformed_price","number_of_reviews","host_response_rate","neighbourhood_cleansed"))
     plot(model)
     
   }

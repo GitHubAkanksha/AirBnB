@@ -31,15 +31,14 @@ shinyUI(fluidPage(
                       
                       tabPanel("Map", leafletOutput("leafletMap", height = 700)),
                       
-                      tabPanel("Summary",
+                      tabPanel("Summary Statistics",
                                fluidRow(column(6, plotOutput("plot1",hover = 'Price')),
                                         column(6, plotOutput("plot2",hover = 'Number of Bedrooms')),
                                         column(6, plotOutput("plot3",hover = 'Number of Bathrooms')),
-                                        column(6, plotOutput("plot4",hover = 'Number of Reviews'))),
-                               fluidRow(column(12, verbatimTextOutput("summarytable")))
+                                        column(6, plotOutput("plot4",hover = 'Number of Reviews')))
                       ),
                       
-                      tabPanel("Review",plotOutput("ReviewOut", height = 700)),
+                      tabPanel("Description",plotOutput("ReviewOut", height = 700)),
                       tabPanel("Sentiments",
                                plotOutput("dynamicSentimentPlot", width = "100%", height = 700)
                       )
