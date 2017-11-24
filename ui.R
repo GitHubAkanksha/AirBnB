@@ -53,9 +53,7 @@ shinyUI(fluidPage(
     ),
     
     tabPanel("Influential Predictors",
-             fluidRow(column(12, verbatimTextOutput("Regression")),
-                      column(12, plotOutput("lmPlot"))
-             )
+             verbatimTextOutput("Regression")
         )
     )
   )
