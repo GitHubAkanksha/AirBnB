@@ -58,10 +58,10 @@ mergedReviews <- merge(reviews, listings, by = "listing_id") #taking inner join
 
 
 # Declaring & Initializing global variables - Region Start
-outputType <- list(o1 = list(type='Map',reqDSTable=listingsDSName,variablesOfInterest=c("name","latitude","longitude","number_of_reviews","review_scores_rating","property_type","neighbourhood_cleansed","transformed_price","review_rating_transformed")),
+outputType <- list(o1 = list(type='Map',reqDSTable=listingsDSName,variablesOfInterest=c("name","latitude","longitude","number_of_reviews","review_scores_rating","property_type","neighbourhood_cleansed","transformed_price","review_rating_transformed","host_is_superhost","host_identity_verified")),
                    o2 = list(type='Summary Statistics',reqDSTable=listingsDSName,variablesOfInterest=c("bedrooms","bathrooms","number_of_reviews","transformed_price","host_is_superhost","host_identity_verified","host_response_time","host_response_rate")),
-                   o3 = list(type='Description',reqDSTable=listingsDSName,variablesOfInterest=c("description")),
-                   o4 = list(type='Sentiments',reqDSTable=mergedReviewsDSName,variablesOfInterest=c("listing_id","name","property_type","neighbourhood_cleansed","comments"))
+                   o3 = list(type='Description',reqDSTable=listingsDSName,variablesOfInterest=c("description","number_of_reviews","transformed_price","host_is_superhost","host_identity_verified")),
+                   o4 = list(type='Sentiments',reqDSTable=mergedReviewsDSName,variablesOfInterest=c("listing_id","name","property_type","neighbourhood_cleansed","comments","number_of_reviews","transformed_price","host_is_superhost","host_identity_verified"))
 )
 
 inputAttr <- list(a1 = list(type='Property Type',varName="property_type", inputControlName="InputPropertyType", plotColor="red"),

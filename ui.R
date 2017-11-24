@@ -22,24 +22,24 @@ shinyUI(fluidPage(
           uiOutput("selectionOnFly"),
           conditionalPanel(condition = "input.Attributes == 'Rate'",
                            sliderInput("InputRate", "Select range for Rates (USD)", 
-                                       min = 11, max = 500, value = 20, step = 1))
+                                       min = 11, max = 1300, value = 20, step = 1))
           
         ),
         mainPanel(
           
           tabsetPanel(type = "tabs", id="tabSetPanel", 
                       
-                      tabPanel("Map", leafletOutput("leafletMap", height = 700)),
+                      tabPanel(id="map", "Map", leafletOutput("leafletMap", height = 700)),
                       
-                      tabPanel("Summary Statistics",
+                      tabPanel(id = "sumamry_statistics", "Summary Statistics",
                                fluidRow(column(6, plotOutput("plot1",hover = 'Price')),
                                         column(6, plotOutput("plot2",hover = 'Number of Bedrooms')),
                                         column(6, plotOutput("plot3",hover = 'Number of Bathrooms')),
                                         column(6, plotOutput("plot4",hover = 'Number of Reviews')))
                       ),
                       
-                      tabPanel("Description",plotOutput("ReviewOut", height = 700)),
-                      tabPanel("Sentiments",
+                      tabPanel(id = "description", "Description",plotOutput("ReviewOut", height = 700)),
+                      tabPanel(id = "sentiments", "Sentiments",
                                plotOutput("dynamicSentimentPlot", width = "100%", height = 700)
                       )
                       

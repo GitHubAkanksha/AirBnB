@@ -20,9 +20,6 @@ library(janeaustenr)
 library(tidytext)
 library(stringr)
 library(treemap)
-library(sjPlot)
-library(sjmisc)
-library(sjlabelled)
 
 
 
@@ -91,20 +88,21 @@ shinyServer(function(input, output) {
       # Grab the filtered listings data based on current selection
       leafletData <- extractSelectionData()
       
-      if(nrow(leafletData) > 0) {
+      if(nrow(leafletData) > 0 && !is.null(leafletData$latitude)) {
         
         # Create our colors with a categorical color function
         color <- colorFactor(topo.colors(7), leafletData$neighbourhood_cleansed)
         
         leaflet(data = leafletData) %>%
-          #setView(lng = -73.98928, lat = 40.75042, zoom = 10) %>%
+          setView(lng = -71.0589, lat = 42.3601, zoom = 13) %>%
           addProviderTiles(
                            providers$CartoDB.Positron,
                            options = providerTileOptions(noWrap = TRUE)
                           ) %>%
-          addGraticule() %>%
-          addMarkers(lat = leafletData$latitude,
-                     lng = leafletData$longitude,
+          #addGraticule()
+          addMarkers(
+                     lat =~leafletData$latitude,
+                     lng =~leafletData$longitude,
                      clusterOptions = markerClusterOptions(),
                      popup = paste(
                        "<b>", as.character(leafletData$name), "<br/></b>",
@@ -119,6 +117,8 @@ shinyServer(function(input, output) {
   # Leaflet Map Generation - Region End
   
   
+ 
+  
   # Box plot to see price variation based on selection - Region Start
   output$plot1 <- renderPlot(
     {
@@ -128,7 +128,10 @@ shinyServer(function(input, output) {
         plot1Data <- extractSelectionData()
         
         if(nrow(plot1Data) > 0)
-          boxplot(plot1Data$transformed_price, main = "Variation In Price", xlab = "Daily Room Rate", ylab = "Price Range")
+        {
+          req(plot1Data$transformed_price)
+            boxplot(plot1Data$transformed_price, ylim = c(min(plot1Data$transformed_price, na.rm = FALSE),max(plot1Data$transformed_price, na.rm = FALSE)), main = "Variation In Price", xlab = "Daily Room Rate", ylab = "Price Range", na.action = NULL)
+        }
       }
     }
   )
@@ -142,10 +145,10 @@ shinyServer(function(input, output) {
         
         # Grab the filtered listings data based on current selection
         plot2Data <- extractSelectionData()
-        counts <- table(plot2Data$host_is_superhost)
+        counts <- table(factor(plot2Data$host_is_superhost))
         
-        if(nrow(plot2Data) > 0)
-          barplot(counts, main = "Proportion Of Super Hosts", xlab = "Number of Super Hosts", ylab = "Count")
+        if(nrow(plot2Data) > 0 && !is.null(counts))
+          barplot(counts, xlim = NULL, ylim = c(0,nrow(plot2Data)), main = "Proportion Of Super Hosts", xlab = "Number of Super Hosts", ylab = "Count")
       }
     }
   )
@@ -159,10 +162,10 @@ shinyServer(function(input, output) {
         
         # Grab the filtered listings data based on current selection
         plot3Data <- extractSelectionData()
-        counts <- table(plot3Data$host_identity_verified)
+        counts <- table(factor(plot3Data$host_identity_verified))
         
-        if(nrow(plot3Data) > 0)
-          barplot(counts, main="Proportion Of Verified Hosts", xlab = "Number of Identity Verified Hosts", ylab="Count")
+        if(nrow(plot3Data) > 0 && !is.null(counts))
+          barplot(counts, xlim = NULL, ylim = c(0,nrow(plot3Data)), main="Proportion Of Verified Hosts", xlab = "Number of Identity Verified Hosts", ylab="Count")
         
       }
     }
@@ -179,7 +182,10 @@ shinyServer(function(input, output) {
         plot4Data <- extractSelectionData()
         
         if(nrow(plot4Data) > 0)
-          hist(plot4Data$number_of_reviews, main="Variation In Number Of Reviews", xlab = "Number of Reviews", ylab="Count")
+        {
+          req(plot4Data$number_of_reviews)
+            hist(as.numeric(plot4Data$number_of_reviews), ylim = c(0,max(plot4Data$number_of_reviews, na.rm = FALSE)), main="Variation In Number Of Reviews", xlab = "Number of Reviews", ylab="Count")
+        }
       }
     }
   )
@@ -192,18 +198,20 @@ shinyServer(function(input, output) {
       # Grab the filtered listings data based on current selection
       reviewdf <- extractSelectionData()
       
-      wordscleanvs <- VectorSource(reviewdf)
-      wordsclean <- SimpleCorpus(wordscleanvs, control = list(language = "en"))
-      wordsclean <- tm_map(wordsclean, stripWhitespace)
-      wordsclean <- tm_map(wordsclean, tolower)
-      wordsclean <- tm_map(wordsclean, removeWords, stopwords("english"))
-      wordsclean <- tm_map(wordsclean, removeWords, c("boston","kitchen","bed","apartment","view"))
-      wordsclean <- tm_map(wordsclean, removeNumbers)
-      wordsclean <- tm_map(wordsclean, removePunctuation)
-      wordsclean <- tm_map(wordsclean, stemDocument)
-      wordcloud(wordsclean, scale=c(5,0.5), max.words=100,min.freq=3, 
-                random.order=FALSE, rot.per=0.35, 
-                use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))
+      if(!is.null(reviewdf)) {
+        wordscleanvs <- VectorSource(reviewdf)
+        wordsclean <- SimpleCorpus(wordscleanvs, control = list(language = "en"))
+        wordsclean <- tm_map(wordsclean, stripWhitespace)
+        wordsclean <- tm_map(wordsclean, tolower)
+        wordsclean <- tm_map(wordsclean, removeWords, stopwords("english"))
+        wordsclean <- tm_map(wordsclean, removeWords, c("boston","kitchen","bed","apartment","view"))
+        wordsclean <- tm_map(wordsclean, removeNumbers)
+        wordsclean <- tm_map(wordsclean, removePunctuation)
+        wordsclean <- tm_map(wordsclean, stemDocument)
+        wordcloud(wordsclean, scale=c(5,0.5), max.words=100,min.freq=3, 
+                  random.order=FALSE, rot.per=0.35, 
+                  use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))
+      }
     }
   )
   # Word Cloud Generation - Region End
@@ -212,10 +220,12 @@ shinyServer(function(input, output) {
   # Sentiment Analysis to see vibes of a neighbourhood for entire dataset - Region Start
   output$sentimentPlot <- renderPlot({
     
-    treemap(by_nh_sentiment, index=c("neighbourhood_cleansed","sentiment"), vSize="prop", vColor="neighbourhood_cleansed", 
-            type="index", title="Sentiment Analysis in Neighbourhood", vertex.size = 12, palette=brewer.pal(n=8, "Set3"), 
-            fontsize.title = 20, fontsize.labels = 15, fontsize.legend = 16, fontcolor.labels = "Black", fontfamily.title = "sans", 
-            fontfamily.labels = "sans", fontfamily.legend = "sans")
+    if(!is.null(by_nh_sentiment)) {
+      treemap(by_nh_sentiment, index=c("neighbourhood_cleansed","sentiment"), vSize="prop", vColor="neighbourhood_cleansed", 
+              type="index", title="Sentiment Analysis in Neighbourhood", vertex.size = 12, palette=brewer.pal(n=8, "Set3"), 
+              fontsize.title = 20, fontsize.labels = 15, fontsize.legend = 16, fontcolor.labels = "Black", fontfamily.title = "sans", 
+              fontfamily.labels = "sans", fontfamily.legend = "sans")
+    }
   })
   # Sentiment Analysis to see vibes of a neighbourhood for entire dataset - Region End
   
@@ -228,11 +238,14 @@ shinyServer(function(input, output) {
       sentimentData <- extractSelectionData()
       by_nh_selection_sentiment <- calculateSentiments(mergedReviews, sentimentData)
       
-      ggplot(data=by_nh_selection_sentiment, aes(x=neighbourhood_cleansed, y=prop, fill=neighbourhood_cleansed)) + geom_bar(stat="identity") + facet_wrap( ~ sentiment) +
-        labs(title="Variation In Vibes Of Neighbourhoods Based On Selection Variables:",
-             x="Sentiments", y="Proportion Index") +
-        theme_minimal() +
-        theme(axis.text.x = element_text(angle = 90, hjust = 1))
+      if(!is.null(by_nh_selection_sentiment)) {
+        req(by_nh_selection_sentiment$sentiment)
+        ggplot(data=by_nh_selection_sentiment, aes(x=neighbourhood_cleansed, y=prop, fill=neighbourhood_cleansed)) + geom_bar(stat="identity") + facet_wrap(~ sentiment) +
+          labs(title="Variation In Vibes Of Neighbourhoods Based On Selection Variables:",
+               x="Sentiments", y="Proportion Index") +
+          theme_minimal() +
+          theme(axis.text.x = element_text(angle = 90, hjust = 1))
+      }
     }
   })
   # Dynamic Sentiment Analysis to see vibes of a neighbourhood based on selection - Region End
@@ -256,28 +269,10 @@ shinyServer(function(input, output) {
     
     model <- glm(review_rating_transformed ~.,data=predictors)
     anova(model,test="Chisq")
-    
+    #stargazer(model,type='text')
   }
   )
   # ANOVA statistics based on Chi-Square test - Region End
-  
-  
-  # Regression plot - Region End
-  output$lmPlot <- renderPlot({
-    
-    predictors <- listings %>% select(review_rating_transformed,listed_since_days,host_is_superhost,
-                                      transformed_price,host_identity_verified,host_has_profile_pic,
-                                      number_of_reviews,host_response_time,
-                                      host_response_rate,host_acceptance_rate,property_type,
-                                      room_type,neighbourhood_cleansed)
-    
-    model <- glm(review_rating_transformed ~.,data=predictors)
-    #plot_model(model, type = "pred", terms = c("listed_since_days","host_is_superhost","transformed_price","number_of_reviews","host_response_rate","neighbourhood_cleansed"))
-    plot(model)
-    
-  }
-  )
-  # Regression plot - Region End
   
 }
 )
